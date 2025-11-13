@@ -28,10 +28,10 @@ export async function setupDb(db: D1Database) {
     `),
   ];
   await db.batch(batch);
-  const { count } = (await db.prepare('SELECT COUNT(*) as count FROM users').first<{ count: number }>())!;
+  const { count } = await db.prepare('SELECT COUNT(*) as count FROM users').first<{ count: number }>();
   if (count === 0) {
     const insertUsersStmt = db.prepare('INSERT INTO users (id, name, avatarUrl) VALUES (?, ?, ?)');
-    const usersToInsert = MOCK_USERS.map(user =>
+    const usersToInsert = MOCK_USERS.map(user => 
       insertUsersStmt.bind(user.id, user.name, `https://i.pravatar.cc/150?u=${user.id}`)
     );
     await db.batch(usersToInsert);

@@ -1,26 +1,26 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, PhotoEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
+import * as db from './db';
 import type { Photo } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  // Ensure seed data is present on first load
+  let dbInitialized = false;
   app.use('/api/*', async (c, next) => {
-    await UserEntity.ensureSeed(c.env);
-    // We don't seed photos anymore as they will be uploaded to R2
-    // await PhotoEntity.ensureSeed(c.env);
+    if (!dbInitialized) {
+      await db.setupDb(c.env.DB);
+      dbInitialized = true;
+    }
     await next();
   });
   // --- USERS API (for mock login) ---
   app.get('/api/users', async (c) => {
-    const page = await UserEntity.list(c.env);
-    return ok(c, page.items);
+    const users = await db.getUsers(c.env.DB);
+    return ok(c, users);
   });
   // --- PHOTOS API ---
   app.get('/api/photos', async (c) => {
-    const page = await PhotoEntity.list(c.env);
-    const sortedPhotos = page.items.sort((a, b) => b.createdAt - a.createdAt);
-    return ok(c, sortedPhotos);
+    const photos = await db.getPhotos(c.env.DB);
+    return ok(c, photos);
   });
   app.post('/api/photos', async (c) => {
     const formData = await c.req.formData();
@@ -29,25 +29,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!(file instanceof File) || !isStr(ownerId)) {
       return bad(c, 'A file and ownerId are required');
     }
-    const userEntity = new UserEntity(c.env, ownerId);
-    if (!(await userEntity.exists())) {
+    const owner = await db.getUserById(c.env.DB, ownerId);
+    if (!owner) {
       return notFound(c, 'Owner user not found');
     }
-    const owner = await userEntity.getState();
     const r2Key = `${crypto.randomUUID()}-${file.name}`;
     await c.env.R2_BUCKET.put(r2Key, file.stream(), {
       httpMetadata: { contentType: file.type },
     });
     const newPhoto: Photo = {
       id: crypto.randomUUID(),
-      url: `/api/assets/${r2Key}`, // URL to our asset server
+      url: `/api/assets/${r2Key}`,
       r2_key: r2Key,
       ownerId: owner.id,
       ownerName: owner.name,
       ownerAvatarUrl: owner.avatarUrl,
       createdAt: Date.now(),
     };
-    await PhotoEntity.create(c.env, newPhoto);
+    await db.createPhoto(c.env.DB, newPhoto);
     return ok(c, newPhoto);
   });
   app.delete('/api/photos/:id', async (c) => {
@@ -56,19 +55,17 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!isStr(userId)) {
       return bad(c, 'X-User-Id header is required for authorization', 401);
     }
-    const photoEntity = new PhotoEntity(c.env, photoId);
-    if (!(await photoEntity.exists())) {
+    const photo = await db.getPhotoById(c.env.DB, photoId);
+    if (!photo) {
       return notFound(c, 'Photo not found');
     }
-    const photo = await photoEntity.getState();
     if (photo.ownerId !== userId) {
       return bad(c, 'You are not authorized to delete this photo', 403);
     }
-    // Delete from R2 if key exists
     if (photo.r2_key) {
       await c.env.R2_BUCKET.delete(photo.r2_key);
     }
-    const deleted = await PhotoEntity.delete(c.env, photoId);
+    const deleted = await db.deletePhoto(c.env.DB, photoId);
     return ok(c, { id: photoId, deleted });
   });
   // --- ASSET SERVING ---
