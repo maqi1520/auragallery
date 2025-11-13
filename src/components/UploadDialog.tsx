@@ -1,4 +1,4 @@
-import { useState, ChangeEvent } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,74 +13,61 @@ import { Label } from '@/components/ui/label';
 import { usePhotoStore } from '@/store/photoStore';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
-import { ImagePlus, Loader2, FileCheck2 } from 'lucide-react';
+import { ImagePlus, Loader2 } from 'lucide-react';
 interface UploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
-  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState('');
   const [isUploading, setUploading] = useState(false);
   const addPhoto = usePhotoStore((s) => s.addPhoto);
   const currentUser = useAuthStore((s) => s.currentUser);
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error('File size must be less than 10MB.');
-        return;
-      }
-      if (!['image/jpeg', 'image/png'].includes(selectedFile.type)) {
-        toast.error('Only JPEG and PNG files are allowed.');
-        return;
-      }
-      setFile(selectedFile);
-    }
-  };
   const handleSubmit = async () => {
-    if (!file || !currentUser) {
-      toast.error('Please select a file to upload.');
+    if (!url.trim() || !currentUser) {
+      toast.error('Image URL is required.');
+      return;
+    }
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch (_) {
+      toast.error('Please enter a valid image URL.');
       return;
     }
     setUploading(true);
-    const newPhoto = await addPhoto(file, currentUser.id);
+    const newPhoto = await addPhoto(url, currentUser.id);
     setUploading(false);
     if (newPhoto) {
-      setFile(null);
+      setUrl('');
       onOpenChange(false);
     }
   };
-  // Reset state when dialog is closed
-  const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      setFile(null);
-      setUploading(false);
-    }
-    onOpenChange(isOpen);
-  };
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Upload a Photo</DialogTitle>
           <DialogDescription>
-            Select a JPEG or PNG image from your device (max 10MB).
+            Paste a direct link to an image (JPEG/PNG) to add it to the gallery.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="picture">Picture</Label>
-            <Input id="picture" type="file" accept="image/jpeg, image/png" onChange={handleFileChange} />
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="url" className="text-right">
+              Image URL
+            </Label>
+            <Input
+              id="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="col-span-3"
+              placeholder="https://..."
+            />
           </div>
-          {file && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 bg-muted rounded-md">
-              <FileCheck2 className="h-4 w-4 text-green-500" />
-              <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-            </div>
-          )}
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleSubmit} disabled={isUploading || !file}>
+          <Button type="submit" onClick={handleSubmit} disabled={isUploading}>
             {isUploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,75 +1,63 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, ChatBoardEntity } from "./entities";
+import { UserEntity, PhotoEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-
+import type { Photo, User } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  app.get('/api/test', (c) => c.json({ success: true, data: { name: 'CF Workers Demo' }}));
-
-  // USERS
-  app.get('/api/users', async (c) => {
+  // Ensure seed data is present on first load
+  app.use('/api/*', async (c, next) => {
     await UserEntity.ensureSeed(c.env);
-    const cq = c.req.query('cursor');
-    const lq = c.req.query('limit');
-    const page = await UserEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
-    return ok(c, page);
+    await PhotoEntity.ensureSeed(c.env);
+    await next();
   });
-
-  app.post('/api/users', async (c) => {
-    const { name } = (await c.req.json()) as { name?: string };
-    if (!name?.trim()) return bad(c, 'name required');
-    return ok(c, await UserEntity.create(c.env, { id: crypto.randomUUID(), name: name.trim() }));
+  // --- USERS API (for mock login) ---
+  app.get('/api/users', async (c) => {
+    const page = await UserEntity.list(c.env);
+    return ok(c, page.items);
   });
-
-  // CHATS
-  app.get('/api/chats', async (c) => {
-    await ChatBoardEntity.ensureSeed(c.env);
-    const cq = c.req.query('cursor');
-    const lq = c.req.query('limit');
-    const page = await ChatBoardEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
-    return ok(c, page);
+  // --- PHOTOS API ---
+  app.get('/api/photos', async (c) => {
+    const page = await PhotoEntity.list(c.env);
+    // Sort by creation date, newest first
+    const sortedPhotos = page.items.sort((a, b) => b.createdAt - a.createdAt);
+    return ok(c, sortedPhotos);
   });
-
-  app.post('/api/chats', async (c) => {
-    const { title } = (await c.req.json()) as { title?: string };
-    if (!title?.trim()) return bad(c, 'title required');
-    const created = await ChatBoardEntity.create(c.env, { id: crypto.randomUUID(), title: title.trim(), messages: [] });
-    return ok(c, { id: created.id, title: created.title });
+  app.post('/api/photos', async (c) => {
+    const { url, ownerId } = (await c.req.json()) as { url?: string; ownerId?: string };
+    if (!isStr(url) || !isStr(ownerId)) {
+      return bad(c, 'url and ownerId are required');
+    }
+    const userEntity = new UserEntity(c.env, ownerId);
+    if (!(await userEntity.exists())) {
+      return notFound(c, 'Owner user not found');
+    }
+    const owner = await userEntity.getState();
+    const newPhoto: Photo = {
+      id: crypto.randomUUID(),
+      url,
+      ownerId: owner.id,
+      ownerName: owner.name,
+      ownerAvatarUrl: owner.avatarUrl,
+      createdAt: Date.now(),
+    };
+    await PhotoEntity.create(c.env, newPhoto);
+    return ok(c, newPhoto);
   });
-
-  // MESSAGES
-  app.get('/api/chats/:chatId/messages', async (c) => {
-    const chat = new ChatBoardEntity(c.env, c.req.param('chatId'));
-    if (!await chat.exists()) return notFound(c, 'chat not found');
-    return ok(c, await chat.listMessages());
-  });
-
-  app.post('/api/chats/:chatId/messages', async (c) => {
-    const chatId = c.req.param('chatId');
-    const { userId, text } = (await c.req.json()) as { userId?: string; text?: string };
-    if (!isStr(userId) || !text?.trim()) return bad(c, 'userId and text required');
-    const chat = new ChatBoardEntity(c.env, chatId);
-    if (!await chat.exists()) return notFound(c, 'chat not found');
-    return ok(c, await chat.sendMessage(userId, text.trim()));
-  });
-
-  // DELETE: Users
-  app.delete('/api/users/:id', async (c) => ok(c, { id: c.req.param('id'), deleted: await UserEntity.delete(c.env, c.req.param('id')) }));
-
-  app.post('/api/users/deleteMany', async (c) => {
-    const { ids } = (await c.req.json()) as { ids?: string[] };
-    const list = ids?.filter(isStr) ?? [];
-    if (list.length === 0) return bad(c, 'ids required');
-    return ok(c, { deletedCount: await UserEntity.deleteMany(c.env, list), ids: list });
-  });
-
-  // DELETE: Chats
-  app.delete('/api/chats/:id', async (c) => ok(c, { id: c.req.param('id'), deleted: await ChatBoardEntity.delete(c.env, c.req.param('id')) }));
-
-  app.post('/api/chats/deleteMany', async (c) => {
-    const { ids } = (await c.req.json()) as { ids?: string[] };
-    const list = ids?.filter(isStr) ?? [];
-    if (list.length === 0) return bad(c, 'ids required');
-    return ok(c, { deletedCount: await ChatBoardEntity.deleteMany(c.env, list), ids: list });
+  app.delete('/api/photos/:id', async (c) => {
+    const photoId = c.req.param('id');
+    const userId = c.req.header('X-User-Id'); // Mock authentication header
+    if (!isStr(userId)) {
+      return bad(c, 'X-User-Id header is required for authorization', 401);
+    }
+    const photoEntity = new PhotoEntity(c.env, photoId);
+    if (!(await photoEntity.exists())) {
+      return notFound(c, 'Photo not found');
+    }
+    const photo = await photoEntity.getState();
+    if (photo.ownerId !== userId) {
+      return bad(c, 'You are not authorized to delete this photo', 403);
+    }
+    const deleted = await PhotoEntity.delete(c.env, photoId);
+    return ok(c, { id: photoId, deleted });
   });
 }
