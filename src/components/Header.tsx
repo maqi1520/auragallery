@@ -18,7 +18,8 @@ export function Header() {
   const login = useAuthStore((s) => s.login);
   const logout = useAuthStore((s) => s.logout);
   const [isUploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string) => {
+    if (!name) return '';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   }
   return (
