@@ -20,14 +20,14 @@ export const useAuthStore = create<AuthState>()(
         if (get().isInitialized) return;
         try {
           const users = await api<User[]>('/api/users');
-          set({ users, isInitialized: true });
-          // Re-hydrate user from ID if it exists in the fresh user list
-          const storedUser = get().currentUser;
-          if (storedUser && !users.find(u => u.id === storedUser.id)) {
-             set({ currentUser: null });
-          } else if (storedUser) {
+          const storedUser = get().currentUser; // Get user from potentially stale persisted state
+          if (storedUser) {
             const fullUser = users.find(u => u.id === storedUser.id);
-            if (fullUser) set({ currentUser: fullUser });
+            // If the stored user still exists in the fresh list, update currentUser with the full, fresh object.
+            // Otherwise, log them out.
+            set({ users, currentUser: fullUser || null, isInitialized: true });
+          } else {
+            set({ users, isInitialized: true });
           }
         } catch (error) {
           console.error("Failed to initialize auth store:", error);
@@ -47,6 +47,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auragallery-auth-storage',
       storage: createJSONStorage(() => localStorage),
+      // Only persist the user's ID to avoid storing stale data.
       partialize: (state) => ({ currentUser: state.currentUser ? { id: state.currentUser.id } : null } as Partial<AuthState>),
     }
   )

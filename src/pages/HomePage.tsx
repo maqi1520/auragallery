@@ -64,7 +64,7 @@ export function HomePage() {
   useEffect(() => {
     initAuth();
     fetchPhotos();
-  }, [initAuth, fetchPhotos]);
+  }, []); // <-- CRITICAL FIX: Empty dependency array ensures this runs only once on mount.
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
@@ -94,7 +94,7 @@ export function HomePage() {
         </div>
       </main>
       <footer className="py-8 text-center text-muted-foreground text-sm">
-        <p>Built with ��️ at Cloudflare</p>
+        <p>Built with ❤️ at Cloudflare</p>
       </footer>
       <Toaster richColors position="top-right" />
     </div>
