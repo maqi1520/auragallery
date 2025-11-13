@@ -11,6 +11,7 @@ export interface User {
 export interface Photo {
   id: string;
   url: string;
+  r2_key?: string;
   ownerId: string;
   ownerName: string;
   ownerAvatarUrl?: string;

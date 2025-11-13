@@ -7,13 +7,12 @@ export const MOCK_USERS: User[] = [
   { id: 'u3', name: 'David', avatarUrl: 'https://i.pravatar.cc/150?u=david' },
 ];
 const now = Date.now();
+// Note: MOCK_PHOTOS are for seeding and won't be used with R2 uploads,
+// but we update the structure for consistency.
 export const MOCK_PHOTOS: Photo[] = [
-    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1716499248813-739b3ba4d82b?q=80&w=2574', ownerId: 'u1', ownerName: 'Alex', ownerAvatarUrl: MOCK_USERS[0].avatarUrl, createdAt: now - 10000 },
-    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1715934491002-2a811a143c64?q=80&w=2574', ownerId: 'u2', ownerName: 'Maria', ownerAvatarUrl: MOCK_USERS[1].avatarUrl, createdAt: now - 20000 },
-    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1716370432993-0855622d174e?q=80&w=2574', ownerId: 'u1', ownerName: 'Alex', ownerAvatarUrl: MOCK_USERS[0].avatarUrl, createdAt: now - 30000 },
-    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1716236939307-b35a77a6411b?q=80&w=2574', ownerId: 'u3', ownerName: 'David', ownerAvatarUrl: MOCK_USERS[2].avatarUrl, createdAt: now - 40000 },
-    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1716134934469-a1a7c35d512e?q=80&w=2574', ownerId: 'u2', ownerName: 'Maria', ownerAvatarUrl: MOCK_USERS[1].avatarUrl, createdAt: now - 50000 },
-    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1715934490983-91c39a6f0394?q=80&w=2574', ownerId: 'u1', ownerName: 'Alex', ownerAvatarUrl: MOCK_USERS[0].avatarUrl, createdAt: now - 60000 },
+    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1716499248813-739b3ba4d82b?q=80&w=2574', r2_key: 'mock1.jpg', ownerId: 'u1', ownerName: 'Alex', ownerAvatarUrl: MOCK_USERS[0].avatarUrl, createdAt: now - 10000 },
+    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1715934491002-2a811a143c64?q=80&w=2574', r2_key: 'mock2.jpg', ownerId: 'u2', ownerName: 'Maria', ownerAvatarUrl: MOCK_USERS[1].avatarUrl, createdAt: now - 20000 },
+    { id: crypto.randomUUID(), url: 'https://images.unsplash.com/photo-1716370432993-0855622d174e?q=80&w=2574', r2_key: 'mock3.jpg', ownerId: 'u1', ownerName: 'Alex', ownerAvatarUrl: MOCK_USERS[0].avatarUrl, createdAt: now - 30000 },
 ];
 // --- ENTITIES ---
 // USER ENTITY: one DO instance per user
@@ -27,6 +26,7 @@ export class UserEntity extends IndexedEntity<User> {
 export class PhotoEntity extends IndexedEntity<Photo> {
   static readonly entityName = "photo";
   static readonly indexName = "photos";
-  static readonly initialState: Photo = { id: "", url: "", ownerId: "", ownerName: "", createdAt: 0 };
-  static seedData = MOCK_PHOTOS;
+  static readonly initialState: Photo = { id: "", url: "", r2_key: "", ownerId: "", ownerName: "", createdAt: 0 };
+  // We no longer seed photos as they should be uploaded to R2.
+  // static seedData = MOCK_PHOTOS;
 }

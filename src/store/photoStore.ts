@@ -7,7 +7,7 @@ interface PhotoState {
   isLoading: boolean;
   error: string | null;
   fetchPhotos: () => Promise<void>;
-  addPhoto: (url: string, ownerId: string) => Promise<Photo | null>;
+  addPhoto: (file: File, ownerId: string) => Promise<Photo | null>;
   deletePhoto: (photoId: string, ownerId: string) => Promise<void>;
 }
 export const usePhotoStore = create<PhotoState>((set, get) => ({
@@ -25,16 +25,19 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       toast.error(errorMessage);
     }
   },
-  addPhoto: async (url: string, ownerId: string) => {
+  addPhoto: async (file: File, ownerId: string) => {
     try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('ownerId', ownerId);
       const newPhoto = await api<Photo>('/api/photos', {
         method: 'POST',
-        body: JSON.stringify({ url, ownerId }),
+        body: formData,
       });
       set((state) => ({
         photos: [newPhoto, ...state.photos],
       }));
-      toast.success('Photo added successfully!');
+      toast.success('Photo uploaded successfully!');
       return newPhoto;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to add photo';

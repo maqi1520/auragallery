@@ -6,8 +6,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthStore } from '@/store/authStore';
 import { usePhotoStore } from '@/store/photoStore';
 import { Toaster } from '@/components/ui/sonner';
-import { Button } from '@/components/ui/button';
-import { LogIn } from 'lucide-react';
 function PhotoGridSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
@@ -64,7 +62,7 @@ export function HomePage() {
   useEffect(() => {
     initAuth();
     fetchPhotos();
-  }, []); // <-- CRITICAL FIX: Empty dependency array ensures this runs only once on mount.
+  }, [initAuth, fetchPhotos]);
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
