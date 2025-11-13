@@ -2,7 +2,7 @@
 
 AuraGallery is a visually stunning, minimalist photo wall application designed for users to share and manage their photographic moments. The application features a clean, responsive grid layout that elegantly showcases photos. Users can authenticate using a mock Google login system, upload new photos by providing an image URL, and delete their own contributions. The entire experience is built with a focus on visual excellence, featuring smooth animations, subtle micro-interactions, and a sophisticated, modern design aesthetic. The backend is powered by a Cloudflare Worker and a single Durable Object for state management, providing a fast and scalable foundation.
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/maqi1520/auragallery)
 
 ## ✨ Key Features
 
@@ -95,7 +95,7 @@ This project is designed for easy deployment to Cloudflare Pages and Workers.
 
 Alternatively, you can deploy directly from your GitHub repository with a single click.
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/maqi1520/auragallery)
 
 ## 📜 Available Scripts
 
